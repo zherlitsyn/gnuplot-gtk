@@ -1,6 +1,8 @@
 # gnuplot-gtk
 A fork of gnuplot with terminal based on GTK 
 
+![Example 0](https://github.com/zherlitsyn/gnuplot-gtk/blob/master/image0.png "Example 0")
+
 ## Installation
 
 **Build**
