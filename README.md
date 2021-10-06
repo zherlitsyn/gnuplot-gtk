@@ -1,11 +1,11 @@
 # gnuplot-gtk
 A fork of gnuplot with terminal based on GTK 
 
-![Example 0](https://github.com/zherlitsyn/gnuplot-gtk/blob/master/image0.png =642x482 "Example 0")
+![Example 0](https://github.com/zherlitsyn/gnuplot-gtk/blob/master/image0.png "Example 0")
 
 **Animated plot**
 
-```
+```c
 #include <unistd.h>
 #include <stdio.h>
 #include <math.h>
@@ -50,7 +50,7 @@ int main()
 }
 ```
 
-![Example 1](https://github.com/zherlitsyn/gnuplot-gtk/blob/master/image1.gif =642x882 "Example 1")
+![Example 1](https://github.com/zherlitsyn/gnuplot-gtk/blob/master/image1.gif "Example 1")
 
 ## Installation
 
