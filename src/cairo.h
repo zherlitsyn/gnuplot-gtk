@@ -94,7 +94,6 @@ static int cairostream_error[1];
 /* Terminal id */
 enum CAIROTRM_id {
     CAIROTRM_THEME,
-    CAIROTRM_PAGES,
     CAIROTRM_FONT,
     CAIROTRM_FONTSCALE,
     CAIROTRM_ENHANCED,
@@ -193,7 +192,7 @@ static const cairo_params_t cairopdf_params_default = CAIROPDF_PARAMS_DEFAULT;
 static cairo_params_t cairopng_params = CAIROPNG_PARAMS_DEFAULT;
 static const cairo_params_t cairopng_params_default = CAIROPNG_PARAMS_DEFAULT;
 
-cairo_params_t *cairo_params = &cairopdf_params;
+static cairo_params_t *cairo_params = &cairopdf_params;
 static const cairo_params_t *cairo_params_default = &cairopdf_params;
 
 #ifdef PSLATEX_DRIVER
@@ -209,7 +208,6 @@ plot_struct plot;
 
 static struct gen_table cairotrm_opts[] = {
     {"theme", CAIROTRM_THEME},
-    {"pages", CAIROTRM_PAGES},
     {"fontscale",   CAIROTRM_FONTSCALE},
     {"f$ont",   CAIROTRM_FONT},
     {"enh$anced", CAIROTRM_ENHANCED},
@@ -265,7 +263,7 @@ TERM_PUBLIC void cairotrm_options()
 	char tmp_term_options[MAX_LINE_LEN+1] = "";
 
 	/* Initialize terminal-dependent values */
-    if (!strcmp(term->name, "gtk")) {
+    if (!strcmp(term->name, "gtkcairo")) {
         cairo_params = &cairopng_params;
         cairo_params_default = &cairopng_params_default;
 
@@ -304,33 +302,15 @@ TERM_PUBLIC void cairotrm_options()
 			if (!(s = try_to_get_string()))
 				int_error(c_token,"theme: expecting string");
 			if (*s) {
-				if (!strcmp(s, "dark")) {
-                    g_object_set(gtk_settings_get_default(),
-                                 "gtk-application-prefer-dark-theme",
-                                 TRUE,
-                                 NULL);
-				}
-                else 
-                if (!strcmp(s, "light")) {
-                    g_object_set(gtk_settings_get_default(),
-                                 "gtk-application-prefer-dark-theme",
-                                 FALSE,
-                                 NULL);
-				}
+				if (!strcmp(s, "dark"))
+                    gtk_application_prefer_dark_theme = TRUE;
+                else
+                if (!strcmp(s, "light"))
+                    gtk_application_prefer_dark_theme = FALSE;
                 else
                     int_error(c_token,"theme: unknown argument");
 			}
 			free(s);
-			break;
-		case CAIROTRM_PAGES:
-			c_token++;
-			int pages = int_expression();
-			if (pages >= 0 || pages <= 255)
-			    gtk_pages = pages;
-            else
-                gtk_pages = 0;
-
-            cairo_params->height *= gtk_pages + 1;
 			break;
 		case CAIROTRM_FONT:
 			c_token++;
@@ -368,7 +348,7 @@ TERM_PUBLIC void cairotrm_options()
 			break;
 		case CAIROTRM_SIZE:
 			c_token++;
-			if (!strcmp(term->name,"pngcairo") || !strcmp(term->name, "gtk"))
+			if (!strcmp(term->name,"pngcairo") || !strcmp(term->name, "gtkcairo"))
 			    cairo_params->explicit_units = parse_term_size(&cairo_params->width, &cairo_params->height, PIXELS);
 			else
 			    cairo_params->explicit_units = parse_term_size(&cairo_params->width, &cairo_params->height, INCHES);
@@ -722,7 +702,7 @@ void cairotrm_init()
 	/* do a sanity check for once */
 	if (strcmp(term->name, "epscairo") && strcmp(term->name, "cairolatex") &&
 	    strcmp(term->name, "pdfcairo") && strcmp(term->name, "pngcairo")   &&
-        strcmp(term->name, "gtk"))
+        strcmp(term->name, "gtkcairo"))
 		int_error(c_token,"Unrecognized cairo terminal");
 
 	/* cairolatex requires a file */
@@ -766,7 +746,7 @@ void cairotrm_init()
 		plot.polygons_saturate = FALSE;
 		/* Empirical correction to make pdf output look more like wxt and png */
 		plot.dashlength /= 2;
-	} else if (!strcmp(term->name, "pngcairo") || !strcmp(term->name, "gtk")) {
+	} else if (!strcmp(term->name, "pngcairo") || !strcmp(term->name, "gtkcairo")) {
 		surface = cairo_image_surface_create( CAIRO_FORMAT_ARGB32,
 				plot.device_xmax /*double width_in_points*/,
 				plot.device_ymax /*double height_in_points*/);
@@ -1081,13 +1061,9 @@ void cairotrm_text()
 		}
 	}
     else
-    if(!strcmp(term->name,"gtk"))
+    if(!strcmp(term->name, "gtkcairo"))
     {
-        if(!gtk_initialized)
-            gtk_init();
-
-        gtk_queue_draw();
-        cairotrm_reset();
+        gtk_queue_draw(cairo_get_target(plot.cr));
 	    term_initialised = FALSE;
     }
 
@@ -1099,6 +1075,8 @@ void cairotrm_text()
 /* sent when gnuplot exits and when the terminal or the output change.*/
 void cairotrm_reset()
 {
+    printf("\n\n{ TERM_RESET: %s = %i }\n\n", term->name, term_initialised);
+
 	if (plot.cr)
 		cairo_destroy(plot.cr);
 	plot.cr = NULL;
@@ -1532,7 +1510,7 @@ TERM_TABLE_END (pngcairo_driver)
 #define LAST_TERM pngcairo_driver
 
 TERM_TABLE_START (gtk_driver)
-    "gtk", "gtk terminal based on cairo",
+    "gtkcairo", "gtk terminal based on cairo",
     /* the following values are overridden by cairotrm_graphics */
     1 /* xmax */ , 1 /* ymax */ , 1 /* vchar */ , 1 /* hchar */ ,
     1 /* vtic */ , 1 /* htic */ ,
@@ -1911,19 +1889,19 @@ END_HELP(pngcairo)
 #endif /* TERM_HELP */
 
 #ifdef TERM_HELP
-START_HELP(gtk)
-"1 gtk",
-"?set terminal gtk",
-"?terminal gtk",
-"?set term gtk",
-"?term gtk",
-"?gtk",
-" The `gtk` terminal device generates output in gtk window. The actual",
+START_HELP(gtkcairo)
+"1 gtkcairo",
+"?set terminal gtkcairo",
+"?terminal gtkcairo",
+"?set term gtkcairo",
+"?term gtkcairo",
+"?gtkcairo",
+" The `gtkcairo` terminal device generates output in gtk window. The actual",
 " drawing is done via cairo, a 2D graphics library, and pango, a library for",
 " laying out and rendering text.",
 "",
 " Syntax:",
-"         set term gtk",
+"         set term gtkcairo",
 "                      {{no}enhanced} {mono|color}",
 "                      {{no}transparent} {{no}crop} {background <rgbcolor>",
 "                      {font <font>} {fontscale <scale>}",
@@ -1950,26 +1928,26 @@ START_HELP(gtk)
 "",
 " <font> is in the format \"FontFace,FontSize\", i.e. the face and the size",
 " comma-separated in a single string. FontFace is a usual font face name, such",
-" as \'Arial\'. If you do not provide FontFace, the gtk terminal will use",
+" as \'Arial\'. If you do not provide FontFace, the gtkcairo terminal will use",
 " \'Sans\'. FontSize is the font size, in points. If you do not provide it,",
-" the gtk terminal will use a size of 12 points.",
+" the gtkcairo terminal will use a size of 12 points.",
 "    For example :",
-"       set term gtk font \"Arial,12\"",
-"       set term gtk font \"Arial\" # to change the font face only",
-"       set term gtk font \",12\" # to change the font size only",
-"       set term gtk font \"\" # to reset the font name and size",
+"       set term gtkcairo font \"Arial,12\"",
+"       set term gtkcairo font \"Arial\" # to change the font face only",
+"       set term gtkcario font \",12\" # to change the font size only",
+"       set term gtkcairo font \"\" # to reset the font name and size",
 "",
 " The fonts are retrieved from the usual fonts subsystems. Under Windows,",
 " those fonts are to be found and configured in the entry \"Fonts\" of the",
 " control panel. Under UNIX, they are handled by \"fontconfig\".",
 "",
-" Pango, the library used to layout the text, is based on utf-8. Thus, the gtk",
+" Pango, the library used to layout the text, is based on utf-8. Thus, the gtkcairo",
 " terminal has to convert from your encoding to utf-8. The default input",
 " encoding is based on your \'locale\'. If you want to use another encoding,",
 " make sure gnuplot knows which one you are using. See `encoding` for more detail.",
 "",
 " Pango may give unexpected results with fonts that do not respect the unicode",
-" mapping. With the Symbol font, for example, the gtk terminal will use the map",
+" mapping. With the Symbol font, for example, the gtkcairo terminal will use the map",
 " provided by http://www.unicode.org/ to translate character codes to unicode.",
 " Note that \"the Symbol font\" is to be understood as the Adobe",
 " Symbol font, distributed with Acrobat Reader as \"SY______.PFB\".",
@@ -1984,5 +1962,5 @@ START_HELP(gtk)
 " Rendering uses oversampling, antialiasing, and font hinting to the extent",
 " supported by the cairo and pango libraries.",
 ""
-END_HELP(gtk)
+END_HELP(gtkcairo)
 #endif /* TERM_HELP */

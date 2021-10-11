@@ -1,161 +1,129 @@
-#include "gp_cairo.h"
+#include <gtk/gtk.h>
 #include "gtk.h"
 
-extern void gp_exit_cleanup(void);
-extern plot_struct plot;
-
-uint8_t gtk_initialized = FALSE;
-uint8_t gtk_drawing = FALSE;
-uint8_t gtk_pages = 0;
-float *gtk_width;
+TBOOLEAN gtk_application_prefer_dark_theme = FALSE;
 float *gtk_height;
+float *gtk_width;
 
-cairo_surface_t *surface;
-GtkApplication *application;
-GtkWidget *scrolled_window;
+static gboolean initialised = 0;
+gboolean updating = 0;
+gboolean drawing = 0;
 GtkWidget *window;
 GtkWidget *area;
-pthread_t thread;
+cairo_surface_t *surface;
+cairo_t *cr;
 
-static void
-gtk_draw(GtkDrawingArea *area, cairo_t *cr, int32_t w, int32_t h, gpointer data)
+static void draw(GtkDrawingArea* self, cairo_t* cr, gint width, gint height,
+                 gpointer user_data)
 {
-    if(surface != NULL)
-    {
-    double wscale = (double)(w) /
-                    cairo_image_surface_get_width(surface);
-    
-    double hscale = (double)(h) /
-                    cairo_image_surface_get_height(surface);
+    while(updating)
+        g_usleep(1000);
 
-    cairo_scale(cr, wscale, hscale);
-        cairo_set_source_surface(cr, surface, 0, 0);
-        cairo_paint(cr);
-//printf("%f,%f (%lf, %lf)\n", *gtk_width, *gtk_height, plot.device_xmax, plot.device_ymax);
-        //surface = NULL;
-        gtk_drawing = FALSE;
-    }
+    drawing = TRUE;
+
+    gdouble sx = (gdouble)(width)  / cairo_image_surface_get_width(surface);
+    gdouble sy = (gdouble)(height) / cairo_image_surface_get_height(surface);
+
+    cairo_scale(cr, sx, sy);
+    cairo_set_source_surface(cr, surface, 0, 0);
+    cairo_paint(cr);
+
+    drawing = FALSE;
 }
 
-gboolean
-gtk_resize(GtkWidget *widget, int32_t w, int32_t h, gpointer data)
+static void resize(GtkDrawingArea* self, gint width, gint height,
+                   gpointer user_data)
 {
-  //  printf("%i,%i\n", w, h);
-
-    *gtk_width = (float) w;
-    *gtk_height = (float) h;
-    return TRUE;
+    *gtk_height = height;
+    *gtk_width = width;
 }
 
-void
-gtk_activate(GtkApplication *application, gpointer data)
-{  
-    window = gtk_application_window_new(application);
-    gtk_window_set_default_size(GTK_WINDOW(window), 640, 480);
+gboolean show(gpointer user_data)
+{
+    gtk_widget_show(GTK_WIDGET(user_data));
+    return FALSE;
+}
+
+static void activate(GtkApplication *self, gpointer user_data)
+{
+    if(gtk_application_prefer_dark_theme)
+        g_object_set(gtk_settings_get_default(),
+                     "gtk-application-prefer-dark-theme", TRUE, NULL);
+ 
+    window = gtk_application_window_new(self);
+    gtk_widget_set_size_request(window, *gtk_width, *gtk_height);
     gtk_window_set_title(GTK_WINDOW(window), "GNUPLOT (GTK)");
-
-    g_signal_connect_after(window, "destroy", G_CALLBACK(gtk_free), NULL);
-
-    if(gtk_pages)
-    {
-        GtkWidget *header = gtk_header_bar_new();
-        GtkAdjustment *adjustment = gtk_adjustment_new(0.0, 0.0, gtk_pages, 1.0, 1.0, 0.0);
-        GtkWidget *button = gtk_spin_button_new(adjustment, 1.0, 0);
-     //g_signal_connect(button, "value-changed", G_CALLBACK(value_changed), vadjustment);
-        gtk_header_bar_pack_start(GTK_HEADER_BAR(header), button);
-        gtk_window_set_titlebar(GTK_WINDOW(window), header);
-    }
-
-    scrolled_window = gtk_scrolled_window_new();
+    gtk_window_set_hide_on_close(GTK_WINDOW(window), TRUE);
 
     area = gtk_drawing_area_new();
-    gtk_drawing_area_set_content_width (GTK_DRAWING_AREA(area), 640);
-    gtk_drawing_area_set_content_height (GTK_DRAWING_AREA(area), (480 - 64) * gtk_pages);
-    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(area), gtk_draw,
-                                   NULL, NULL);
+    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(area), draw,
+                                   NULL,  NULL);
 
-    g_signal_connect_after(area, "resize", G_CALLBACK(gtk_resize), NULL);
+    g_signal_connect_after(area, "resize", G_CALLBACK(resize), NULL);
+    gtk_window_set_child(GTK_WINDOW(window), area);
+    g_idle_add(show, window);
 
-    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrolled_window), area);
-    gtk_window_set_child(GTK_WINDOW(window), scrolled_window);
-    gtk_widget_show(window);
-    gtk_widget_show(scrolled_window);
+    initialised = TRUE;
 }
 
-static void 
-*gtk_main(void *data)
+gpointer gmain(gpointer user_data)
 {
+    GtkApplication *application;
     application = gtk_application_new("org.gnuplot.terminal",
                                       G_APPLICATION_FLAGS_NONE);
 
     g_signal_connect(G_APPLICATION(application), "activate",
-                     G_CALLBACK(gtk_activate), NULL);
+                     G_CALLBACK(activate), NULL);
 
-    int32_t status = g_application_run(G_APPLICATION(application), 0, NULL);
-
-    printf("GTK EXIT: %i", status);
-
+    gint status = g_application_run(G_APPLICATION(application), 0, NULL);
     g_object_unref(application);
-    pthread_exit(&status);
 }
 
-
-cairo_t *cr;
-
-void
-gtk_init()
+static void initialise()
 {
-            surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 640, 480);
-            cr = cairo_create(surface);
+    surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
+                                         *gtk_width, *gtk_height);
+    cr = cairo_create(surface);
 
-    pthread_create(&thread, NULL, gtk_main, NULL);
-    gtk_initialized = TRUE;
+    g_thread_new("gtk.main", gmain, NULL);
+
+    while(!initialised)
+        g_usleep(1000);
 }
 
-void
-gtk_free()
+void gtk_queue_draw(cairo_surface_t *plot)
 {
-    gp_exit_cleanup();
-    exit(0);
-}
+    if(!initialised)
+        initialise();
 
-
-void
-gtk_queue_draw()
-{
     if(GTK_IS_WIDGET(area))
     {
-        cairo_surface_t *tmp = cairo_get_target(plot.cr);
-        int w = cairo_image_surface_get_width(tmp);
-        int h = cairo_image_surface_get_height(tmp);
+        g_idle_add(show, window);
 
-        if(w != cairo_image_surface_get_width(surface) || 
-           h != cairo_image_surface_get_width(surface))
+        gint width = cairo_image_surface_get_width(plot);
+        gint height = cairo_image_surface_get_height(plot);
+
+        if(width  != cairo_image_surface_get_width(surface) || 
+           height != cairo_image_surface_get_height(surface))
         {
-            surface = NULL;
+            while(drawing)
+                g_usleep(1000);
+
+            updating = TRUE;
+
             cairo_destroy(cr);
             cairo_surface_destroy(surface);
-            surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
+
+            surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
+                                                 width, height);
             cr = cairo_create(surface);
         }
 
-/*        surface = NULL;
-        cairo_surface_destroy(surface);
-
-
-        //int s = cairo_image_surface_get_stride(tmp);
-*/
-
-        cairo_set_source_surface(cr, tmp, 0, 0);
+        cairo_set_source_surface(cr, plot, 0, 0);
         cairo_paint(cr);
 
-        //surface = cairo_image_surface_create_for_data(cairo_image_surface_get_data(tmp),
-        //                                              CAIRO_FORMAT_ARGB32, w, h, s); 
+        updating = FALSE;
 
-        //surface = 
-    //    gtk_drawing = TRUE;
         gtk_widget_queue_draw(area);
-//        while(gtk_drawing != FALSE)
-  //          usleep(1);
     }
 }

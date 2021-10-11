@@ -55,7 +55,7 @@
  */
 
 #define contains_unicode(S) strstr(S, "\\U+")
-#define DEFAULTTERM "gtk"
+#define DEFAULTTERM "gtkcairo"
 
 #include "estimate.h"
 #include "cairo.h"
