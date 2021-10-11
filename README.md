@@ -67,8 +67,11 @@ int main()
 
 ## More examples
 http://www.gnuplot.info/
+
 http://www.gnuplotting.org/
+
 http://www.gnuplot.info/docs_5.4/Gnuplot_5_4.pdf
+
 https://ayapin-film.sakura.ne.jp/Gnuplot/pm3d.html
 
 ## Installation
