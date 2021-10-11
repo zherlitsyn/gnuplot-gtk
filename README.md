@@ -13,7 +13,7 @@ A fork of gnuplot with terminal based on GTK
 int main()
 {
     FILE *gp = popen("gnuplot_gtk", "w");
-    fprintf(gp, "set term gtk size 642,882");
+    fprintf(gp, "set term gtkcairo size 642,882");
 
     float sinus[720];
     for(int i = 0; i < 720; i++)
