@@ -180,7 +180,7 @@ static int var_show_all = 0;
 /* following code segments appear over and over again */
 #define SHOW_ALL_NL { if (!var_show_all) (void) putc('\n',stderr); }
 
-#define PROGRAM "G N U P L O T"
+#define PROGRAM "G N U P L O T (GTK)"
 
 /******* The 'show' command *******/
 void
