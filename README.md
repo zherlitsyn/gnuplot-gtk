@@ -3,6 +3,19 @@ A fork of gnuplot with terminal based on GTK
 
 ![Example 0](https://github.com/zherlitsyn/gnuplot-gtk/blob/master/image0.png "Example 0")
 
+**Dark theme**
+
+```
+~ $: gnuplot
+gnuplot> set term gtkcairo background '#202020' theme 'dark'
+gnuplot> set border linecolor rgbcolor '#EFEFEF'
+gnuplot> set key textcolor rgbcolor '#EFEFEF'
+gnuplot> set grid lc rgb '#BFBFBF'
+gnuplot> plot sin(x), cos(x)
+```
+
+![Example 1](https://github.com/zherlitsyn/gnuplot-gtk/blob/master/image1.png "Example 1")
+
 **Animated plot**
 
 ```c
@@ -50,7 +63,7 @@ int main()
 }
 ```
 
-![Example 1](https://github.com/zherlitsyn/gnuplot-gtk/blob/master/image1.gif "Example 1")
+![Example 2](https://github.com/zherlitsyn/gnuplot-gtk/blob/master/image2.gif "Example 2")
 
 ## Installation
 
