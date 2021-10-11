@@ -23,8 +23,6 @@ OBJECTS=$(SOURCES:%.c=%.o)
 
 DEFS=-DHAVE_CONFIG_H
 
-DESTDIR=/usr/bin
-
 TARGET=plot.c
 
 CC=gcc
@@ -37,9 +35,9 @@ all: $(OBJECTS)
 	$(CC) $(DEFS) $(CFLAGS) $(INCLUDE) -c $<
 
 install:
-	mkdir -p "$(DESTDIR)"
-	cp "gnuplot_gtk" "$(DESTDIR)/gnuplot_gtk"
-	chmod +x "$(DESTDIR)/gnuplot_gtk"
+	mkdir -p "$(DESTDIR)/usr/bin"
+	cp "gnuplot_gtk" "$(DESTDIR)/usr/bin/gnuplot_gtk"
+	chmod +x "$(DESTDIR)/usr/bin/gnuplot_gtk"
 
 clean:
 	@rm -f gnuplot_gtk *.o
