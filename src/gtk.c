@@ -16,7 +16,7 @@ cairo_t *cr;
 static void draw(GtkDrawingArea* self, cairo_t* cr, gint width, gint height,
                  gpointer user_data)
 {
-    while(updating)
+    while (updating)
         g_usleep(1000);
 
     drawing = TRUE;
@@ -46,7 +46,7 @@ gboolean show(gpointer user_data)
 
 static void activate(GtkApplication *self, gpointer user_data)
 {
-    if(gtk_application_prefer_dark_theme)
+    if (gtk_application_prefer_dark_theme)
         g_object_set(gtk_settings_get_default(),
                      "gtk-application-prefer-dark-theme", TRUE, NULL);
  
@@ -87,26 +87,25 @@ static void initialise()
 
     g_thread_new("gtk.main", gmain, NULL);
 
-    while(!initialised)
+    while (!initialised)
         g_usleep(1000);
 }
 
 void gtk_queue_draw(cairo_surface_t *plot)
 {
-    if(!initialised)
+    if (!initialised)
         initialise();
 
-    if(GTK_IS_WIDGET(area))
-    {
+    if (GTK_IS_WIDGET(area)) {
         g_idle_add(show, window);
 
         gint width = cairo_image_surface_get_width(plot);
         gint height = cairo_image_surface_get_height(plot);
 
-        if(width  != cairo_image_surface_get_width(surface) || 
-           height != cairo_image_surface_get_height(surface))
-        {
-            while(drawing)
+        if (width  != cairo_image_surface_get_width(surface)   || 
+            height != cairo_image_surface_get_height(surface)) {
+
+            while (drawing)
                 g_usleep(1000);
 
             updating = TRUE;
