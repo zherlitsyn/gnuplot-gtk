@@ -28,7 +28,7 @@ TARGET=plot.c
 CC=gcc
 
 all: $(OBJECTS)
-	$(CC) $(DEFS) $(CFLAGS) $(INCLUDE) $(TARGET) $(LIBS) $(OBJECTS) -o gnuplot_gtk
+	$(CC) $(DEFS) $(CFLAGS) $(INCLUDE) $(TARGET) $(OBJECTS) $(LIBS) -o gnuplot_gtk
 
 %.o: %.c
 	@echo Compiling target: $< ...
