@@ -56,10 +56,9 @@ static void activate(GtkApplication *self, gpointer user_data)
     gtk_window_set_hide_on_close(GTK_WINDOW(window), TRUE);
 
     area = gtk_drawing_area_new();
-    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(area), draw,
-                                   NULL,  NULL);
-
+    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(area), draw, NULL,  NULL);
     g_signal_connect_after(area, "resize", G_CALLBACK(resize), NULL);
+
     gtk_window_set_child(GTK_WINDOW(window), area);
     g_idle_add(show, window);
 
@@ -69,11 +68,10 @@ static void activate(GtkApplication *self, gpointer user_data)
 gpointer gmain(gpointer user_data)
 {
     GtkApplication *application;
-    application = gtk_application_new("org.gnuplot.terminal",
-                                      G_APPLICATION_FLAGS_NONE);
+    application = gtk_application_new((char*)user_data, G_APPLICATION_FLAGS_NONE);
 
-    g_signal_connect(G_APPLICATION(application), "activate",
-                     G_CALLBACK(activate), NULL);
+    g_signal_connect(G_APPLICATION(application), "activate", G_CALLBACK(activate),
+                     NULL);
 
     gint status = g_application_run(G_APPLICATION(application), 0, NULL);
     g_object_unref(application);
@@ -83,9 +81,14 @@ static void initialise()
 {
     surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
                                          *gtk_width, *gtk_height);
+
     cr = cairo_create(surface);
 
-    g_thread_new("gtk.main", gmain, NULL);
+    char name[64];
+    pid_t pid = getpid();
+    snprintf(name, 64, "org.gnuplot.terminal%d", pid);
+
+    g_thread_new(name, gmain, name);
 
     while (!initialised)
         g_usleep(1000);
